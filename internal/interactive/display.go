@@ -53,7 +53,7 @@ func History() []string {
 			historyItem.Connection.Port,
 			historyItem.Connection.User,
 			historyItem.Connection.Key,
-			fmt.Sprintf("%s", history.ReadableTime(currentTime.Sub(historyItem.Date))),
+			history.ReadableTime(currentTime.Sub(historyItem.Date)),
 		})
 	}
 	c := Select(rows, SelectHistory)
