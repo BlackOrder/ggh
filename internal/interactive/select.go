@@ -31,6 +31,7 @@ type model struct {
 	exit         bool
 	windowWidth  int
 	windowHeight int
+	mOutput      string // exit message
 }
 
 func (m model) Init() tea.Cmd {
@@ -162,16 +163,40 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			history.RemoveByIP(m.table.SelectedRow())
 
-			// Remove the selected row and all the rows that match the Host
+			// Get the currently selected row
+			selectedRow := m.table.SelectedRow()
 			rows := m.table.Rows()
-			for i := len(rows) - 1; i >= 0; i-- {
-				if rows[i][1] == m.table.SelectedRow()[1] {
-					rows = slices.Delete(rows, i, i+1)
+
+			// Safety check: ensure the selected row has at least 2 columns
+			if len(selectedRow) >= 2 {
+				// Remove the selected row and all the rows that match the Host
+				// The host we want to remove
+				hostToRemove := selectedRow[1]
+				var newRows []table.Row
+				for _, row := range rows {
+					// Double-check the row has enough columns before accessing row[1]
+					if len(row) < 2 {
+						continue
+					}
+					// If this row’s host does not match the one to remove, we keep it
+					if row[1] != hostToRemove {
+						newRows = append(newRows, row)
+					}
 				}
+
+				// Update the table with the new rows
+				m.table.SetRows(newRows)
 			}
-			m.table.SetRows(rows)
 
 			m.table, cmd = m.table.Update("") // Overrides default `d` behavior
+
+			// if table is empty, exit
+			if len(m.table.Rows()) == 0 {
+				m.exit = true
+				m.mOutput = "No history found."
+				return m, tea.Quit
+			}
+
 			return m, cmd
 		case "r":
 			history.RemoveByName(m.table.SelectedRow())
@@ -180,6 +205,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.table.SetRows(rows)
 
 			m.table, cmd = m.table.Update("") // Overrides default `r` behavior
+
+			// if table is empty, exit
+			if len(m.table.Rows()) == 0 {
+				m.exit = true
+				m.mOutput = "No history found."
+				return m, tea.Quit
+			}
+
 			return m, cmd
 		case "q", "ctrl+c", "esc":
 			m.exit = true
@@ -264,6 +297,9 @@ func Select(rows []table.Row, what Selecting) config.SSHConfig {
 	if m, ok := m.(model); ok {
 		if m.choice.Host != "" {
 			return m.choice
+		}
+		if m.mOutput != "" {
+			fmt.Println(m.mOutput)
 		}
 		if m.exit {
 			os.Exit(0)
