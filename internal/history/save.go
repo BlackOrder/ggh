@@ -3,12 +3,13 @@ package history
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/byawitz/ggh/internal/config"
-	"github.com/charmbracelet/bubbles/table"
 	"os"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/blackorder/ggh/internal/config"
+	"github.com/charmbracelet/bubbles/table"
 )
 
 func AddHistoryFromArgs(args []string) {

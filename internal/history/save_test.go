@@ -1,9 +1,10 @@
 package history
 
 import (
-	"github.com/byawitz/ggh/internal/config"
 	"testing"
 	"time"
+
+	"github.com/blackorder/ggh/internal/config"
 )
 
 var converted = "[{\"connection\":{\"name\":\"\",\"host\":\"\",\"port\":\"5172\",\"user\":\"\",\"key\":\"\"},\"date\":\"2024-08-25T00:00:00-04:00\"},{\"connection\":{\"name\":\"prod\",\"host\":\"myhost.com\",\"port\":\"\",\"user\":\"\",\"key\":\"\"},\"date\":\"2024-04-25T00:00:00-04:00\"}]"

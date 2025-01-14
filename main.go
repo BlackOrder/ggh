@@ -1,6 +1,6 @@
 package main
 
-import "github.com/byawitz/ggh/cmd"
+import "github.com/blackorder/ggh/cmd"
 
 func main() {
 	cmd.Main()

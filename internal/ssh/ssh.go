@@ -2,11 +2,12 @@ package ssh
 
 import (
 	"fmt"
-	"github.com/byawitz/ggh/internal/config"
 	"os"
 	"os/exec"
 	"slices"
 	"strings"
+
+	"github.com/blackorder/ggh/internal/config"
 )
 
 func GenerateCommandArgs(c config.SSHConfig) []string {

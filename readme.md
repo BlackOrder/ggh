@@ -7,20 +7,22 @@
 
 <p align="center"><img src="./assets/ggh.gif" alt="GGH Demo"></p>
 
+## Original Package
+This is a fork of the original [ggh](https://github.com/byawitz/ggh) package. The original package had some issues. This fork aims to fix those issues and add my own spin to it.
 
 ## Install
 
-Run one of the following script, or download the latest binary from the [releases](https://github.com/byawitz/ggh/releases) page.
+Run one of the following script, or download the latest binary from the [releases](https://github.com/blackorder/ggh/releases) page.
 
 ```shell
 # Unix based
-curl https://raw.githubusercontent.com/byawitz/ggh/master/install/unix.sh | sh
+curl https://raw.githubusercontent.com/blackorder/ggh/master/install/unix.sh | sh
 
 # Windows 
-powershell -c "irm https://raw.githubusercontent.com/byawitz/ggh/master/install/windows.ps1 | iex"
+powershell -c "irm https://raw.githubusercontent.com/blackorder/ggh/master/install/windows.ps1 | iex"
 
 # Go
-go install github.com/byawitz/ggh@latest
+go install github.com/blackorder/ggh@latest
 ```
 
 ## Usages

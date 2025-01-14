@@ -3,11 +3,12 @@ package history
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/byawitz/ggh/internal/config"
-	"github.com/byawitz/ggh/internal/theme"
-	"github.com/charmbracelet/bubbles/table"
 	"log"
 	"time"
+
+	"github.com/blackorder/ggh/internal/config"
+	"github.com/blackorder/ggh/internal/theme"
+	"github.com/charmbracelet/bubbles/table"
 )
 
 type SSHHistory struct {
@@ -67,7 +68,7 @@ func Print() {
 			history.Connection.Port,
 			history.Connection.User,
 			history.Connection.Key,
-			fmt.Sprintf("%s", ReadableTime(currentTime.Sub(history.Date))),
+			ReadableTime(currentTime.Sub(history.Date)),
 		})
 	}
 

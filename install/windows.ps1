@@ -30,7 +30,7 @@ if (!(Test-Path $GGHInstallDir -PathType Container))
 }
 
 $githubHeader.Accept = "application/octet-stream"
-Invoke-WebRequest -Headers $githubHeader -Uri "https://github.com/byawitz/ggh/releases/latest/download/ggh_windows_x86_64.exe" -OutFile $GGHCliPath
+Invoke-WebRequest -Headers $githubHeader -Uri "https://github.com/blackorder/ggh/releases/latest/download/ggh_windows_x86_64.exe" -OutFile $GGHCliPath
 
 if (!(Test-Path $GGHCliPath -PathType Leaf))
 {

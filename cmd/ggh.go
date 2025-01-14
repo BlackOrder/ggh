@@ -1,12 +1,13 @@
 package cmd
 
 import (
-	"github.com/byawitz/ggh/internal/command"
-	"github.com/byawitz/ggh/internal/config"
-	"github.com/byawitz/ggh/internal/history"
-	"github.com/byawitz/ggh/internal/interactive"
-	"github.com/byawitz/ggh/internal/ssh"
 	"os"
+
+	"github.com/blackorder/ggh/internal/command"
+	"github.com/blackorder/ggh/internal/config"
+	"github.com/blackorder/ggh/internal/history"
+	"github.com/blackorder/ggh/internal/interactive"
+	"github.com/blackorder/ggh/internal/ssh"
 )
 
 func Main() {
