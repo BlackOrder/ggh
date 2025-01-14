@@ -45,9 +45,23 @@ func History() []string {
 		os.Exit(0)
 	}
 
+	// clean list for duplicates, keep the latest
+	uniqueMap := make(map[string]history.SSHHistory) // Store the full struct instead of just the date
+	for _, history := range list {
+		if existing, ok := uniqueMap[history.Connection.Host]; !ok || history.Date.After(existing.Date) {
+			uniqueMap[history.Connection.Host] = history // Update with the latest history entry
+		}
+	}
+
+	// Extract the unique values from the map
+	uniqueList := make([]history.SSHHistory, 0, len(uniqueMap))
+	for _, history := range uniqueMap {
+		uniqueList = append(uniqueList, history)
+	}
+
 	var rows []table.Row
 	currentTime := time.Now()
-	for _, historyItem := range list {
+	for _, historyItem := range uniqueList {
 		rows = append(rows, table.Row{
 			historyItem.Connection.Name,
 			historyItem.Connection.Host,
