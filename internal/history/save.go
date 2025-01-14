@@ -70,6 +70,33 @@ func AddHistory(c config.SSHConfig) {
 	}
 }
 
+func RemoveByName(row table.Row) {
+	list, err := Fetch(getFile())
+
+	if err != nil {
+		fmt.Println("error getting ggh file")
+		return
+	}
+
+	cName := row[0]
+
+	saving := make([]SSHHistory, 0, len(list)-1)
+
+	for _, item := range list {
+		if item.Connection.Name == cName {
+			continue
+		}
+
+		saving = append(saving, item)
+	}
+
+	err = saveFile(SSHHistory{}, saving)
+	if err != nil {
+		panic("error saving ggh file")
+	}
+
+}
+
 func RemoveByIP(row table.Row) {
 	list, err := Fetch(getFile())
 

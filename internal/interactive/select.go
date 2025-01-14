@@ -162,10 +162,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			history.RemoveByIP(m.table.SelectedRow())
 
-			rows := slices.Delete(m.table.Rows(), m.table.Cursor(), m.table.Cursor()+1)
+			// Remove the selected row and all the rows that match the Host
+			rows := m.table.Rows()
+			for i := len(rows) - 1; i >= 0; i-- {
+				if rows[i][1] == m.table.SelectedRow()[1] {
+					rows = slices.Delete(rows, i, i+1)
+				}
+			}
 			m.table.SetRows(rows)
 
 			m.table, cmd = m.table.Update("") // Overrides default `d` behavior
+			return m, cmd
+		case "r":
+			history.RemoveByName(m.table.SelectedRow())
+
+			rows := slices.Delete(m.table.Rows(), m.table.Cursor(), m.table.Cursor()+1)
+			m.table.SetRows(rows)
+
+			m.table, cmd = m.table.Update("") // Overrides default `r` behavior
 			return m, cmd
 		case "q", "ctrl+c", "esc":
 			m.exit = true
@@ -268,7 +282,8 @@ func (m model) HelpView() string {
 	b.WriteString(generateHelpBlock(km.LineDown.Help().Key, km.LineDown.Help().Desc, true))
 
 	if m.what == SelectHistory {
-		b.WriteString(generateHelpBlock("d", "delete", true))
+		b.WriteString(generateHelpBlock("d", "delete (Host)", true))
+		b.WriteString(generateHelpBlock("r", "delete (Name)", true))
 	}
 
 	b.WriteString(generateHelpBlock("q/esc", "quit", false))
