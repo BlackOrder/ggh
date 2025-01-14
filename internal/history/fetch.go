@@ -39,7 +39,7 @@ func Fetch(file []byte) ([]SSHHistory, error) {
 
 	for i, history := range historyList {
 		for _, sshConfig := range search {
-			if sshConfig.Host == history.Connection.Host {
+			if sshConfig.Host == history.Connection.Host && sshConfig.Port == history.Connection.Port && sshConfig.User == history.Connection.User {
 				historyList[i].Connection.Name = sshConfig.Name
 			}
 		}
@@ -67,7 +67,7 @@ func Print() {
 			history.Connection.Port,
 			history.Connection.User,
 			history.Connection.Key,
-			fmt.Sprintf("%s", ReadableTime(currentTime.Sub(history.Date))),
+			ReadableTime(currentTime.Sub(history.Date)),
 		})
 	}
 
