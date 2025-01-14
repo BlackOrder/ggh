@@ -2,13 +2,14 @@ package interactive
 
 import (
 	"fmt"
-	"github.com/byawitz/ggh/internal/config"
-	"github.com/byawitz/ggh/internal/history"
-	"github.com/byawitz/ggh/internal/ssh"
-	"github.com/charmbracelet/bubbles/table"
 	"log"
 	"os"
 	"time"
+
+	"github.com/blackorder/ggh/internal/config"
+	"github.com/blackorder/ggh/internal/history"
+	"github.com/blackorder/ggh/internal/ssh"
+	"github.com/charmbracelet/bubbles/table"
 )
 
 func Config(value string) []string {

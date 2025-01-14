@@ -2,13 +2,14 @@ package interactive
 
 import (
 	"fmt"
-	"github.com/byawitz/ggh/internal/config"
-	"github.com/byawitz/ggh/internal/history"
-	"github.com/byawitz/ggh/internal/theme"
 	"math"
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/blackorder/ggh/internal/config"
+	"github.com/blackorder/ggh/internal/history"
+	"github.com/blackorder/ggh/internal/theme"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"

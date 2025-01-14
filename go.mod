@@ -1,4 +1,4 @@
-module github.com/byawitz/ggh
+module github.com/blackorder/ggh
 
 go 1.22.5
 
