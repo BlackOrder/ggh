@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/blackorder/ggh/internal/config"
@@ -47,17 +48,23 @@ func History() []string {
 
 	// clean list for duplicates, keep the latest
 	uniqueMap := make(map[string]history.SSHHistory) // Store the full struct instead of just the date
-	for _, history := range list {
-		if existing, ok := uniqueMap[history.Connection.Host]; !ok || history.Date.After(existing.Date) {
-			uniqueMap[history.Connection.Host] = history // Update with the latest history entry
+	for _, h := range list {
+		uniqueKey := h.Connection.Host + h.Connection.User + h.Connection.Port
+		if existing, ok := uniqueMap[uniqueKey]; !ok || h.Date.After(existing.Date) {
+			uniqueMap[uniqueKey] = h // Update with the latest history entry
 		}
 	}
 
-	// Extract the unique values from the map
+	// Extract the unique values from the map sorted by date
 	uniqueList := make([]history.SSHHistory, 0, len(uniqueMap))
-	for _, history := range uniqueMap {
-		uniqueList = append(uniqueList, history)
+	for _, h := range uniqueMap {
+		uniqueList = append(uniqueList, h)
 	}
+
+	// Sort by date (descending: newest first)
+	sort.Slice(uniqueList, func(i, j int) bool {
+		return uniqueList[i].Date.After(uniqueList[j].Date)
+	})
 
 	var rows []table.Row
 	currentTime := time.Now()
