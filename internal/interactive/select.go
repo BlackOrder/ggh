@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"slices"
 	"strings"
 
 	"github.com/blackorder/ggh/internal/config"
@@ -23,10 +22,13 @@ const (
 	SelectHistory
 )
 
-// The model now tracks window width/height in order to
-// dynamically size the table.
+// The model now tracks window width/height, filtering mode, etc.
 type model struct {
 	table        table.Model
+	allRows      []table.Row
+	filteredRows []table.Row
+	filtering    bool
+	filterText   string
 	choice       config.SSHConfig
 	what         Selecting
 	exit         bool
@@ -55,9 +57,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Extra margin for content
 		widthForTableContent := widthForTable - 13
-		heightForTable := m.windowHeight - 4
-		if heightForTable < 4 {
-			heightForTable = 4
+		heightForTable := m.windowHeight - 5
+		if heightForTable < 5 {
+			heightForTable = 5
 		}
 
 		cols := m.table.Columns()
@@ -160,34 +162,71 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// 3. Handle key events
 	case tea.KeyMsg:
+		if m.filtering {
+			switch msg.Type {
+			case tea.KeyRunes:
+				// Add typed character(s) to filterText
+				m.filterText += string(msg.Runes)
+				m.applyFilter()
+				return m, nil
+
+			case tea.KeyBackspace:
+				if len(m.filterText) > 0 {
+					m.filterText = m.filterText[:len(m.filterText)-1]
+					m.applyFilter()
+				}
+				return m, nil
+
+			// Pressing Enter in filtering mode → do nothing special
+			// (We *could* also exit filtering mode if you wanted.)
+			case tea.KeyEnter:
+				// We still let the table handle selection.
+				// so let's break out and do the normal table update below
+				break
+
+			// Pressing 'esc' in filtering mode → exit filtering & restore data
+			case tea.KeyEsc:
+				fallthrough
+			case tea.KeyCtrlC:
+				fallthrough
+			default:
+				// any other keys, pass to the table
+			}
+		}
+
 		switch msg.String() {
+
+		case "/":
+			if !m.filtering {
+				// Enter filtering mode
+				m.filtering = true
+				m.filterText = "" // or keep existing text if you want incremental
+				m.applyFilter()   // apply empty filter or partial filter
+				return m, nil
+			}
+			// If we’re *already* filtering, ignore
+			return m, nil
 		case "d":
+			if m.table.SelectedRow() == nil {
+				return m, nil
+			}
 			history.RemoveByIP(m.table.SelectedRow())
 
 			// Get the currently selected row
 			selectedRow := m.table.SelectedRow()
-			rows := m.table.Rows()
+			hostToRemove := selectedRow[1]
 
-			// Safety check: ensure the selected row has at least 2 columns
-			if len(selectedRow) >= 2 {
-				// Remove the selected row and all the rows that match the Host
-				// The host we want to remove
-				hostToRemove := selectedRow[1]
-				var newRows []table.Row
-				for _, row := range rows {
-					// Double-check the row has enough columns before accessing row[1]
-					if len(row) < 2 {
-						continue
-					}
-					// If this row’s host does not match the one to remove, we keep it
-					if row[1] != hostToRemove {
-						newRows = append(newRows, row)
-					}
+			var newAllRows []table.Row
+			for _, row := range m.allRows {
+				// If this row’s host does not match the one to remove, we keep it
+				if row[1] != hostToRemove {
+					newAllRows = append(newAllRows, row)
 				}
-
-				// Update the table with the new rows
-				m.table.SetRows(newRows)
 			}
+			m.allRows = newAllRows
+
+			// Update the table with the new rows
+			m.table.SetRows(m.allRows)
 
 			m.table, cmd = m.table.Update("") // Overrides default `d` behavior
 
@@ -200,12 +239,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			return m, cmd
 		case "r":
+			if m.table.SelectedRow() == nil {
+				return m, nil
+			}
 			history.RemoveByName(m.table.SelectedRow())
 
-			rows := slices.Delete(m.table.Rows(), m.table.Cursor(), m.table.Cursor()+1)
-			m.table.SetRows(rows)
+			// Get the currently selected row
+			selectedRow := m.table.SelectedRow()
+			nameToRemove := selectedRow[0]
 
-			m.table, cmd = m.table.Update("") // Overrides default `r` behavior
+			var newallRows []table.Row
+			for _, row := range m.allRows {
+				// If this row’s host does not match the one to remove, we keep it
+				if row[0] != nameToRemove {
+					newallRows = append(newallRows, row)
+				}
+			}
+			m.allRows = newallRows
+
+			// Update the table with the new rows
+			m.table.SetRows(m.allRows)
+
+			m.table, cmd = m.table.Update("") // Overrides default `d` behavior
 
 			// if table is empty, exit
 			if len(m.table.Rows()) == 0 {
@@ -216,15 +271,52 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			return m, cmd
 		case "q", "ctrl+c", "esc":
+			if m.filtering {
+				// If we’re filtering, pressing esc/q just stops filtering
+				m.stopFiltering()
+				return m, nil
+			}
+			// else if not filtering, exit the program
 			m.exit = true
 			return m, tea.Quit
 		case "enter":
+			if m.table.SelectedRow() == nil {
+				return m, nil
+			}
 			m.choice = setConfig(m.table.SelectedRow())
 			return m, tea.Quit
 		}
 	}
 	m.table, cmd = m.table.Update(msg)
 	return m, cmd
+}
+
+// applyFilter re-filters the "allRows" into "filteredRows" based on m.filterText
+func (m *model) applyFilter() {
+	if m.filterText == "" {
+		// no filter → show all
+		m.filteredRows = m.allRows
+	} else {
+		var out []table.Row
+		lowerFilter := strings.ToLower(m.filterText)
+		for _, row := range m.allRows {
+			// For example, we check row[0] or row[1], or all fields
+			rowStr := strings.ToLower(strings.Join(row, " "))
+			if strings.Contains(rowStr, lowerFilter) {
+				out = append(out, row)
+			}
+		}
+		m.filteredRows = out
+	}
+	m.table.SetRows(m.filteredRows)
+}
+
+// stopFiltering leaves filtering mode & restores all data
+func (m *model) stopFiltering() {
+	m.filtering = false
+	m.filterText = ""
+	m.filteredRows = m.allRows
+	m.table.SetRows(m.filteredRows)
 }
 
 func setConfig(row table.Row) config.SSHConfig {
@@ -240,9 +332,21 @@ func (m model) View() string {
 	if m.choice.Host != "" || m.exit {
 		return ""
 	}
-	return theme.BaseStyle.Render(m.table.View()) + "\n  " + m.HelpView() + "\n"
+
+	// If we are filtering, show a small prompt with the filter text
+	if m.filtering {
+		prompt := lipgloss.NewStyle().
+			Background(lipgloss.Color("#87CEEB")).
+			Foreground(lipgloss.Color("#000000")).
+			Width(m.windowWidth - 5).
+			Render(fmt.Sprintf("/%s", m.filterText))
+		return theme.BaseStyle.Render(m.table.View()) + "\n  " + prompt + "\n  " + m.HelpFilterView() + "\n"
+	}
+
+	return theme.BaseStyle.Render(m.table.View()) + "\n\n  " + m.HelpView() + "\n"
 }
 
+// Updated Select function: store `rows` in both allRows & filteredRows
 func Select(rows []table.Row, what Selecting) config.SSHConfig {
 	var columns []table.Column
 
@@ -284,11 +388,16 @@ func Select(rows []table.Row, what Selecting) config.SSHConfig {
 
 	t.SetStyles(s)
 
-	// Create and run the Bubble Tea program.
-	p := tea.NewProgram(model{table: t, what: what},
-		// Turn on alt screen so the UI occupies the full screen
-		// and so we can receive WindowSizeMsg automatically.
-		tea.WithAltScreen())
+	// Create and run the Bubble Tea program,
+	// storing rows in allRows + filteredRows.
+	initialModel := model{
+		table:        t,
+		allRows:      rows,
+		filteredRows: rows, // Start unfiltered
+		what:         what,
+	}
+
+	p := tea.NewProgram(initialModel, tea.WithAltScreen())
 	m, err := p.Run()
 	if err != nil {
 		fmt.Println("error while running the interactive selector, ", err)
@@ -309,6 +418,7 @@ func Select(rows []table.Row, what Selecting) config.SSHConfig {
 
 	return config.SSHConfig{}
 }
+
 func (m model) HelpView() string {
 
 	km := table.DefaultKeyMap()
@@ -322,8 +432,21 @@ func (m model) HelpView() string {
 		b.WriteString(generateHelpBlock("d", "delete (Host)", true))
 		b.WriteString(generateHelpBlock("r", "delete (Name)", true))
 	}
-
+	b.WriteString(generateHelpBlock("/", "filter mode", true))
 	b.WriteString(generateHelpBlock("q/esc", "quit", false))
+
+	return b.String()
+}
+
+func (m model) HelpFilterView() string {
+
+	km := table.DefaultKeyMap()
+
+	var b strings.Builder
+
+	b.WriteString(generateHelpBlock(km.LineUp.Help().Key, km.LineUp.Help().Desc, true))
+	b.WriteString(generateHelpBlock(km.LineDown.Help().Key, km.LineDown.Help().Desc, true))
+	b.WriteString(generateHelpBlock("esc", "exit filter mode", false))
 
 	return b.String()
 }
