@@ -248,14 +248,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			selectedRow := m.table.SelectedRow()
 			nameToRemove := selectedRow[0]
 
-			var newallRows []table.Row
+			var newAllRows []table.Row
 			for _, row := range m.allRows {
 				// If this row’s host does not match the one to remove, we keep it
 				if row[0] != nameToRemove {
-					newallRows = append(newallRows, row)
+					newAllRows = append(newAllRows, row)
 				}
 			}
-			m.allRows = newallRows
+			m.allRows = newAllRows
 
 			// Update the table with the new rows
 			m.table.SetRows(m.allRows)
