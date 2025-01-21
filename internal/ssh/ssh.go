@@ -23,7 +23,7 @@ func GenerateCommandArgs(c config.SSHConfig) []string {
 	}
 
 	if c.Port != "" {
-		key = "-p " + c.Port
+		port = "-p " + c.Port
 	}
 	return strings.Split(fmt.Sprintf("%s@%s %s %s", user, c.Host, key, port), " ")
 }
