@@ -48,6 +48,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.table.SetRows(rows)
 
 			m.table, cmd = m.table.Update("") // Overrides default `d` behavior
+
+			// check if the table is empty
+			if len(m.table.Rows()) == 0 {
+				m.exit = true
+				return m, tea.Quit
+			}
+
 			return m, cmd
 		case "q", "ctrl+c", "esc":
 			m.exit = true
