@@ -7,7 +7,6 @@ import (
 	"github.com/byawitz/ggh/internal/theme"
 	"math"
 	"os"
-	"slices"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -39,7 +38,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "d":
 			history.RemoveByIP(m.table.SelectedRow())
 
-			rows := slices.Delete(m.table.Rows(), m.table.Cursor(), m.table.Cursor()+1)
+			// Filter out the selected row and all rows with the same IP/host
+			rows := []table.Row{}
+			for _, row := range m.table.Rows() {
+				if row[1] != m.table.SelectedRow()[1] {
+					rows = append(rows, row)
+				}
+			}
 			m.table.SetRows(rows)
 
 			m.table, cmd = m.table.Update("") // Overrides default `d` behavior
