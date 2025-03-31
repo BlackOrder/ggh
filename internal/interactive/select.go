@@ -21,7 +21,7 @@ const (
 	SelectConfig Selecting = iota
 	SelectHistory
 	MarginWidth            = 3
-	MarginHeight           = 4
+	MarginHeight           = 5
 	MinimumTableWidth      = 3
 	MinimumTableHeight     = 4
 	ContentExtraMargin     = 12
