@@ -44,9 +44,18 @@ func History() []string {
 		os.Exit(0)
 	}
 
+	// clean list for duplicates, keep the latest
+	uniqueList := map[string]history.SSHHistory{}
+	for _, h := range list {
+		uniqueKey := h.Connection.Host + h.Connection.User + h.Connection.Port
+		if existing, ok := uniqueList[uniqueKey]; !ok || h.Date.After(existing.Date) {
+			uniqueList[uniqueKey] = h // Update with the latest history entry
+		}
+	}
+
 	var rows []table.Row
 	currentTime := time.Now()
-	for _, historyItem := range list {
+	for _, historyItem := range uniqueList {
 		rows = append(rows, table.Row{
 			historyItem.Connection.Name,
 			historyItem.Connection.Host,
