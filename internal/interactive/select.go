@@ -189,7 +189,7 @@ func (m model) View() string {
 		return theme.BaseStyle.Render(m.table.View()) + "\n " + prompt + "\n  " + m.HelpFilterView() + "\n"
 	}
 
-	return theme.BaseStyle.Render(m.table.View()) + "\n  " + m.HelpView() + "\n"
+	return theme.BaseStyle.Render(m.table.View()) + "\n\n  " + m.HelpView() + "\n"
 }
 
 func Select(rows []table.Row, what Selecting) config.SSHConfig {
