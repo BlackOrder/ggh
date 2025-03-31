@@ -22,10 +22,14 @@ const (
 )
 
 type model struct {
-	table  table.Model
-	choice config.SSHConfig
-	what   Selecting
-	exit   bool
+	table        table.Model
+	allRows      []table.Row
+	filteredRows []table.Row
+	filtering    bool
+	filterText   string
+	choice       config.SSHConfig
+	what         Selecting
+	exit         bool
 }
 
 func (m model) Init() tea.Cmd { return nil }
@@ -34,18 +38,51 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		if m.filtering {
+			switch msg.Type {
+			case tea.KeyRunes:
+				// Add the typed character to the filter text
+				m.filterText += string(msg.Runes)
+				m.applyFilter()
+				return m, nil
+			case tea.KeyBackspace:
+				// Remove the last character from the filter text
+				if len(m.filterText) > 0 {
+					m.filterText = m.filterText[:len(m.filterText)-1]
+					m.applyFilter()
+				}
+				return m, nil
+			default:
+				// any other keys, pass to the table
+			}
+		}
 		switch msg.String() {
+		case "/":
+			if !m.filtering {
+				m.filtering = true
+				m.filterText = ""
+				m.applyFilter()
+				return m, nil
+			}
+			// If we are already filtering, we don't want to do anything
+			return m, nil
 		case "d":
-			history.RemoveByIP(m.table.SelectedRow())
+			selectedRow := m.table.SelectedRow()
+			// guard against selection nil
+			if selectedRow == nil {
+				return m, nil
+			}
+			history.RemoveByIP(selectedRow)
 
 			// Filter out the selected row and all rows with the same IP/host
 			rows := []table.Row{}
 			for _, row := range m.table.Rows() {
-				if row[1] != m.table.SelectedRow()[1] {
+				if row[1] != selectedRow[1] {
 					rows = append(rows, row)
 				}
 			}
-			m.table.SetRows(rows)
+			m.allRows = rows
+			m.table.SetRows(m.allRows)
 
 			m.table, cmd = m.table.Update("") // Overrides default `d` behavior
 
@@ -57,15 +94,52 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			return m, cmd
 		case "q", "ctrl+c", "esc":
+			if m.filtering {
+				m.stopFiltering()
+				return m, nil
+			}
 			m.exit = true
 			return m, tea.Quit
 		case "enter":
-			m.choice = setConfig(m.table.SelectedRow(), m.what)
+			selectedRow := m.table.SelectedRow()
+			// guard against selection nil
+			if selectedRow == nil {
+				return m, nil
+			}
+			m.choice = setConfig(selectedRow, m.what)
 			return m, tea.Quit
 		}
 	}
 	m.table, cmd = m.table.Update(msg)
 	return m, cmd
+}
+
+// applyFilter re-filters the "allRows" into "filteredRows" based on m.filterText
+func (m *model) applyFilter() {
+	if m.filterText == "" {
+		// no filter → show all
+		m.filteredRows = m.allRows
+	} else {
+		var out []table.Row
+		lowerFilter := strings.ToLower(m.filterText)
+		for _, row := range m.allRows {
+			// For example, we check row[0] or row[1], or all fields
+			rowStr := strings.ToLower(strings.Join(row, " "))
+			if strings.Contains(rowStr, lowerFilter) {
+				out = append(out, row)
+			}
+		}
+		m.filteredRows = out
+	}
+	m.table.SetRows(m.filteredRows)
+}
+
+// stopFiltering leaves filtering mode & restores all data
+func (m *model) stopFiltering() {
+	m.filtering = false
+	m.filterText = ""
+	m.filteredRows = m.allRows
+	m.table.SetRows(m.filteredRows)
 }
 
 func setConfig(row table.Row, what Selecting) config.SSHConfig {
@@ -81,6 +155,13 @@ func (m model) View() string {
 	if m.choice.Host != "" || m.exit {
 		return ""
 	}
+
+	// If we are filtering, show a small prompt with the filter text
+	if m.filtering {
+		prompt := lipgloss.NewStyle().Foreground(lipgloss.Color("57")).Bold(false).Render(fmt.Sprintf("/%s", m.filterText))
+		return theme.BaseStyle.Render(m.table.View()) + "\n " + prompt + "\n  " + m.HelpFilterView() + "\n"
+	}
+
 	return theme.BaseStyle.Render(m.table.View()) + "\n  " + m.HelpView() + "\n"
 }
 
@@ -120,7 +201,7 @@ func Select(rows []table.Row, what Selecting) config.SSHConfig {
 
 	t.SetStyles(s)
 
-	p := tea.NewProgram(model{table: t, what: what})
+	p := tea.NewProgram(model{table: t, allRows: rows, filteredRows: rows, what: what})
 	m, err := p.Run()
 	if err != nil {
 		fmt.Println("error while running the interactive selector, ", err)
@@ -151,7 +232,21 @@ func (m model) HelpView() string {
 		b.WriteString(generateHelpBlock("d", "delete", true))
 	}
 
+	b.WriteString(generateHelpBlock("/", "filter", true))
 	b.WriteString(generateHelpBlock("q/esc", "quit", false))
+
+	return b.String()
+}
+
+func (m model) HelpFilterView() string {
+
+	km := table.DefaultKeyMap()
+
+	var b strings.Builder
+
+	b.WriteString(generateHelpBlock(km.LineUp.Help().Key, km.LineUp.Help().Desc, true))
+	b.WriteString(generateHelpBlock(km.LineDown.Help().Key, km.LineDown.Help().Desc, true))
+	b.WriteString(generateHelpBlock("esc", "exit filter mode", false))
 
 	return b.String()
 }
