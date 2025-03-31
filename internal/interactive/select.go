@@ -93,6 +93,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			return m, cmd
+		case "r":
+			selectedRow := m.table.SelectedRow()
+			// guard against selection nil
+			if selectedRow == nil {
+				return m, nil
+			}
+			history.RemoveByName(selectedRow)
+
+			// Filter out the selected row
+			rows := []table.Row{}
+			for _, row := range m.table.Rows() {
+				if row[0] != selectedRow[0] {
+					rows = append(rows, row)
+				}
+			}
+			m.allRows = rows
+			m.table.SetRows(m.allRows)
+
+			m.table, cmd = m.table.Update("")
+
+			// check if the table is empty
+			if len(m.table.Rows()) == 0 {
+				m.exit = true
+				return m, tea.Quit
+			}
+
+			return m, cmd
 		case "q", "ctrl+c", "esc":
 			if m.filtering {
 				m.stopFiltering()
@@ -230,6 +257,7 @@ func (m model) HelpView() string {
 
 	if m.what == SelectHistory {
 		b.WriteString(generateHelpBlock("d", "delete", true))
+		b.WriteString(generateHelpBlock("r", "remove", true))
 	}
 
 	b.WriteString(generateHelpBlock("/", "filter", true))
