@@ -282,6 +282,7 @@ func (m *model) stopFiltering() {
 
 func setConfig(row table.Row, what Selecting) config.SSHConfig {
 	return config.SSHConfig{
+		Name: row[0],
 		Host: row[1],
 		Port: row[2],
 		User: row[3],
