@@ -109,10 +109,12 @@ func stringify(n SSHHistory, l []SSHHistory) string {
 	history := make([]SSHHistory, 0)
 
 	if n.Connection.Host != "" {
+		n.Connection.CleanName()
 		history = append(history, n)
 	}
 
 	for _, sshHistory := range l {
+		sshHistory.Connection.CleanName()
 		if sshHistory.Connection.UniqueKey() != n.Connection.UniqueKey() {
 			history = append(history, sshHistory)
 		}

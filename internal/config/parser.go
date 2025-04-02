@@ -20,8 +20,13 @@ type SSHConfig struct {
 	Key  string `json:"key"`
 }
 
+const (
+	DirectSSH     = "──────────────"
+	MissingConfig = "❗"
+)
+
 func (c *SSHConfig) IsDirectSSH() bool {
-	return c.Name == ""
+	return c.Name == "" || c.Name == DirectSSH
 }
 
 func (c *SSHConfig) UniqueKey() string {
@@ -29,6 +34,13 @@ func (c *SSHConfig) UniqueKey() string {
 		return c.Name
 	}
 	return fmt.Sprintf("%s%s%s", c.Host, c.Port, c.User)
+}
+
+func (c *SSHConfig) CleanName() {
+	if c.Name == DirectSSH {
+		c.Name = ""
+	}
+	c.Name = strings.TrimPrefix(c.Name, MissingConfig)
 }
 
 func Parse(configFile string) ([]SSHConfig, error) {
