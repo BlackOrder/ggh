@@ -109,7 +109,6 @@ func stringify(n SSHHistory, l []SSHHistory) string {
 	history := make([]SSHHistory, 0)
 
 	if n.Connection.Host != "" {
-		n.Connection.CleanName()
 		history = append(history, n)
 	}
 

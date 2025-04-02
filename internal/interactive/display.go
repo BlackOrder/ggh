@@ -58,6 +58,7 @@ func History() []string {
 		})
 	}
 	c := Select(rows, SelectHistory)
+	c.CleanName()
 	history.AddHistory(c)
 	if c.IsDirectSSH() {
 		return ssh.GenerateCommandArgs(c)
