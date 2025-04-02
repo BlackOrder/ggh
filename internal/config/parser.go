@@ -20,6 +20,17 @@ type SSHConfig struct {
 	Key  string `json:"key"`
 }
 
+func (c *SSHConfig) IsDirectSSH() bool {
+	return c.Name == ""
+}
+
+func (c *SSHConfig) UniqueKey() string {
+	if !c.IsDirectSSH() {
+		return c.Name
+	}
+	return fmt.Sprintf("%s%s%s", c.Host, c.Port, c.User)
+}
+
 func Parse(configFile string) ([]SSHConfig, error) {
 	return ParseWithSearch("", configFile)
 }

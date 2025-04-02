@@ -29,6 +29,7 @@ func Config(value string) []string {
 		})
 	}
 	c := Select(rows, SelectConfig)
+	history.AddHistory(c)
 	return ssh.GenerateCommandArgs(c)
 }
 
@@ -57,5 +58,6 @@ func History() []string {
 		})
 	}
 	c := Select(rows, SelectHistory)
+	history.AddHistory(c)
 	return ssh.GenerateCommandArgs(c)
 }
