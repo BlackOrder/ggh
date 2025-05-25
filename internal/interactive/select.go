@@ -19,10 +19,11 @@ type Selecting int
 const (
 	SelectConfig Selecting = iota
 	SelectHistory
+)
+
+const (
 	MarginWidth            = 3
-	MarginHeight           = 5
 	MinimumTableWidth      = 3
-	MinimumTableHeight     = 4
 	ContentExtraMargin     = 12
 	PreferredKeyExtraWidth = 15
 	MaxKeyExtraWidth       = 30
@@ -38,10 +39,9 @@ type model struct {
 	what         Selecting
 	exit         bool
 	windowWidth  int
-	windowHeight int
 }
 
-func (m model) Init() tea.Cmd { return tea.Batch(tea.EnterAltScreen) }
+func (m model) Init() tea.Cmd { return nil }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -49,12 +49,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// 1. Handle window resize events
 	case tea.WindowSizeMsg:
 		m.windowWidth = msg.Width
-		m.windowHeight = msg.Height
 
 		widthForTable := max(m.windowWidth-MarginWidth, MinimumTableWidth)
 		// Extra margin for content
 		widthForTableContent := widthForTable - ContentExtraMargin
-		heightForTable := max(m.windowHeight-MarginHeight, MinimumTableHeight)
 
 		cols := m.table.Columns()
 
@@ -144,7 +142,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Apply the new widths
 		m.table.SetColumns(cols)
 		m.table.SetWidth(widthForTable)
-		m.table.SetHeight(heightForTable)
 
 		return m, nil
 
