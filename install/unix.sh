@@ -42,7 +42,7 @@ runAsRoot() {
 
 downloadBinary() {
     GITHUB_FILE="ggh_${OS}_${ARCH}"
-    GITHUB_URL="https://github.com/byawitz/ggh/releases/latest/download/$GITHUB_FILE"
+    GITHUB_URL="https://github.com/BlackOrder/ggh/releases/latest/download/$GITHUB_FILE"
     curl $GITHUB_URL --location --progress-bar --output "ggh-tmp"
 
 }
