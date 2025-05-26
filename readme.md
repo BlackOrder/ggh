@@ -20,7 +20,7 @@ curl https://raw.githubusercontent.com/BlackOrder/ggh/blackorder/install/unix.sh
 powershell -c "irm https://raw.githubusercontent.com/BlackOrder/ggh/blackorder/install/windows.ps1 | iex"
 
 # Go
-go install github.com/byawitz/ggh@blackorder
+go install github.com/BlackOrder/ggh@blackorder
 ```
 
 ## Usages
