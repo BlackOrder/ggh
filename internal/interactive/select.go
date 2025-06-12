@@ -154,7 +154,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.EnterAltScreen
 		} else {
 			// if not fullscreen, set the height to a minimum of 8 rows
-			m.table.SetHeight(int(math.Min(8, float64(len(m.table.Rows())+1))))
+			m.table.SetHeight(int(math.Min(8, float64(len(m.filteredRows)+1))))
 			return m, tea.ExitAltScreen
 		}
 
@@ -253,7 +253,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tea.EnterAltScreen
 				} else {
 					// if not fullscreen, set the height to a minimum of 8 rows
-					m.table.SetHeight(int(math.Min(8, float64(len(m.table.Rows())+1))))
+					m.table.SetHeight(int(math.Min(8, float64(len(m.filteredRows)+1))))
 					return m, tea.ExitAltScreen
 				}
 			}
@@ -416,6 +416,7 @@ func (m model) HelpFilterView() string {
 
 	b.WriteString(generateHelpBlock(km.LineUp.Help().Key, km.LineUp.Help().Desc, true))
 	b.WriteString(generateHelpBlock(km.LineDown.Help().Key, km.LineDown.Help().Desc, true))
+	b.WriteString(generateHelpBlock("w", "full/windowed", true))
 	b.WriteString(generateHelpBlock("esc", "exit filter mode", false))
 
 	return b.String()
