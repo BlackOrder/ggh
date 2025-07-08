@@ -4,17 +4,36 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 )
 
 type Settings struct {
 	Fullscreen bool `json:"fullscreen"`
 }
 
-func FetchWithDefaultFile() Settings {
-	return Fetch(getFile())
+var S atomic.Value
+
+func init() {
+	S.Store(Settings{})
+
+	go func() {
+		s := fetchWithDefaultFile()
+		S.Store(s)
+	}()
 }
 
-func Fetch(file []byte) Settings {
+func Get() Settings {
+	if s, ok := S.Load().(Settings); ok {
+		return s
+	}
+	return Settings{}
+}
+
+func fetchWithDefaultFile() Settings {
+	return fetch(getFile())
+}
+
+func fetch(file []byte) Settings {
 	var s Settings
 
 	if len(file) == 0 {
@@ -29,12 +48,18 @@ func Fetch(file []byte) Settings {
 	return s
 }
 
-func Save(s Settings) (*Settings, error) {
+func Save(s Settings) error {
 	b, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &s, os.WriteFile(getFileLocation(), b, 0644)
+	err = os.WriteFile(getFileLocation(), b, 0644)
+
+	if err == nil {
+		S.Store(s) // Update the atomic value with the new settings
+	}
+
+	return err
 }
 
 func getFileLocation() string {

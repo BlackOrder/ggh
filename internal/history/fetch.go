@@ -81,7 +81,7 @@ func Print() {
 		})
 	}
 
-	fmt.Println(theme.PrintTable(rows, theme.PrintHistory))
+	fmt.Println(theme.PrintTable(rows, theme.HistoryTable))
 }
 
 func ReadableTime(d time.Duration) string {

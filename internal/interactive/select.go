@@ -6,29 +6,12 @@ import (
 	"github.com/byawitz/ggh/internal/history"
 	"github.com/byawitz/ggh/internal/settings"
 	"github.com/byawitz/ggh/internal/theme"
-	"math"
 	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-)
-
-type Selecting int
-
-const (
-	SelectConfig Selecting = iota
-	SelectHistory
-)
-
-const (
-	MarginWidth            = 3
-	MarginHeight           = 5
-	MinimumTableWidth      = 3
-	ContentExtraMargin     = 12
-	PreferredKeyExtraWidth = 15
-	MaxKeyExtraWidth       = 30
 )
 
 type model struct {
@@ -38,11 +21,11 @@ type model struct {
 	filtering    bool
 	filterText   string
 	choice       config.SSHConfig
-	what         Selecting
 	exit         bool
 	windowWidth  int
 	windowHeight int
-	settings     settings.Settings
+	tableWidth   int
+	tableHeight  int
 }
 
 func (m model) Init() tea.Cmd { return nil }
@@ -53,110 +36,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// 1. Handle window resize events
 	case tea.WindowSizeMsg:
 		m.windowWidth = msg.Width
-		m.windowHeight = msg.Height - MarginHeight
+		m.windowHeight = msg.Height
 
-		widthForTable := max(m.windowWidth-MarginWidth, MinimumTableWidth)
-		// Extra margin for content
-		widthForTableContent := widthForTable - ContentExtraMargin
+		w, h, cols := theme.AdjustTableDimensions(
+			m.table.Columns(),
+			m.windowWidth,
+			m.windowHeight,
+		)
 
-		cols := m.table.Columns()
-
-		switch m.what {
-		// SELECT CONFIG
-		case SelectConfig:
-			// columns = [Name, Host, Port, User, Key]
-			// base widths = 15,20,5,10,10 = total 60
-			baseWidths := []int{15, 20, 5, 10, 10}
-			const totalBase = 60
-
-			if widthForTableContent >= totalBase {
-				leftover := widthForTableContent - totalBase
-				leftoverForKey := 0
-				leftoverForName := 0
-
-				for leftover > 0 {
-					if leftoverForKey < PreferredKeyExtraWidth {
-						leftoverForKey++
-						leftover--
-					} else if leftoverForKey < MaxKeyExtraWidth && leftover > 1 {
-						leftoverForName++
-						leftoverForKey++
-						leftover -= 2
-					} else {
-						leftoverForName++
-						leftover--
-					}
-				}
-
-				cols[0].Width = baseWidths[0] + leftoverForName // Name
-				cols[1].Width = baseWidths[1]                   // Host
-				cols[2].Width = baseWidths[2]                   // Port
-				cols[3].Width = baseWidths[3]                   // User
-				cols[4].Width = baseWidths[4] + leftoverForKey  // Key
-			} else {
-				// Scale all columns proportionally
-				ratio := float64(widthForTableContent) / float64(totalBase)
-				for i := range cols {
-					w := max(int(math.Round(float64(baseWidths[i])*ratio)), 1)
-					cols[i].Width = w
-				}
-			}
-
-		// SELECT HISTORY
-		case SelectHistory:
-			// columns = [Name,Host,Port,User,Key,Last login]
-			// base widths = 10,20,5,10,0,15 = total 60
-			baseWidths := []int{10, 20, 5, 10, 0, 15}
-			const totalBase = 60
-
-			if widthForTableContent >= totalBase {
-				leftover := widthForTableContent - totalBase
-				leftoverForKey := 0
-				leftoverForName := 0
-
-				for leftover > 0 {
-					if leftoverForKey < PreferredKeyExtraWidth {
-						leftoverForKey++
-						leftover--
-					} else if leftoverForKey < MaxKeyExtraWidth && leftover > 1 {
-						leftoverForName++
-						leftoverForKey++
-						leftover -= 2
-					} else {
-						leftoverForName++
-						leftover--
-					}
-				}
-
-				cols[0].Width = baseWidths[0] + leftoverForName // Name
-				cols[1].Width = baseWidths[1]                   // Host
-				cols[2].Width = baseWidths[2]                   // Port
-				cols[3].Width = baseWidths[3]                   // User
-				cols[4].Width = baseWidths[4] + leftoverForKey  // Key
-				cols[5].Width = baseWidths[5]                   // Last login
-			} else {
-				// Not enough space → scale all columns proportionally
-				ratio := float64(widthForTableContent) / float64(totalBase)
-				for i := range cols {
-					w := max(int(math.Round(float64(baseWidths[i])*ratio)), 1)
-					cols[i].Width = w
-				}
-			}
-		}
+		m.tableWidth = w
+		m.tableHeight = h
 
 		// Apply the new widths
 		m.table.SetColumns(cols)
-		m.table.SetWidth(widthForTable)
-		m.settings = settings.FetchWithDefaultFile()
-		if m.settings.Fullscreen {
-			// if fullscreen, let the table be as tall as the terminal
-			m.table.SetHeight(m.windowHeight)
+		m.resetTableHeight()
+
+		if settings.Get().Fullscreen {
 			return m, tea.EnterAltScreen
-		} else {
-			// if not fullscreen, set the height to a minimum of 8 rows
-			m.table.SetHeight(int(math.Min(8, float64(len(m.filteredRows)+1))))
-			return m, tea.ExitAltScreen
 		}
+
+		return m, tea.ExitAltScreen
 
 	case tea.KeyMsg:
 		if m.filtering {
@@ -243,19 +142,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		case "w":
 			// toggle fullscreen mode
-			newsettings := m.settings
-			newsettings.Fullscreen = !m.settings.Fullscreen
-			if s, err := settings.Save(newsettings); err == nil && s != nil {
-				m.settings = *s
-				if m.settings.Fullscreen {
-					// if fullscreen, let the table be as tall as the terminal
-					m.table.SetHeight(m.windowHeight)
+			newsettings := settings.Get()
+			newsettings.Fullscreen = !newsettings.Fullscreen
+			if err := settings.Save(newsettings); err == nil {
+				m.resetTableHeight()
+
+				if newsettings.Fullscreen {
 					return m, tea.EnterAltScreen
-				} else {
-					// if not fullscreen, set the height to a minimum of 8 rows
-					m.table.SetHeight(int(math.Min(8, float64(len(m.filteredRows)+1))))
-					return m, tea.ExitAltScreen
 				}
+
+				return m, tea.ExitAltScreen
 			}
 
 			// If we can't save the settings, do nothing
@@ -273,7 +169,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if selectedRow == nil {
 				return m, nil
 			}
-			m.choice = setConfig(selectedRow, m.what)
+			m.choice = setConfig(selectedRow)
 			return m, tea.Quit
 		}
 	}
@@ -309,7 +205,7 @@ func (m *model) stopFiltering() {
 	m.table.SetRows(m.filteredRows)
 }
 
-func setConfig(row table.Row, what Selecting) config.SSHConfig {
+func setConfig(row table.Row) config.SSHConfig {
 	return config.SSHConfig{
 		Name: row[0],
 		Host: row[1],
@@ -324,52 +220,96 @@ func (m model) View() string {
 		return ""
 	}
 
-	// If we are filtering, show a small prompt with the filter text
-	if m.filtering {
-		prompt := lipgloss.NewStyle().Foreground(lipgloss.Color("57")).Bold(false).Render(fmt.Sprintf("/%s", m.filterText))
-		return theme.BaseStyle.Render(m.table.View()) + "\n " + prompt + "\n  " + m.HelpFilterView() + "\n"
+	if m.tableHeight < 3 {
+		msg := fmt.Sprintf(
+			"Too small (%d lines). Need ≥ 6 lines.",
+			m.windowHeight,
+		)
+
+		// Style: high-contrast foreground, rounded border, padded.
+		styled := lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#FF0060", Dark: "#FF79C6"}).
+			Render(msg)
+
+		// Center horizontally by calculating left padding.
+		pad := max((m.windowWidth-lipgloss.Width(styled))/2, 0)
+		centered := strings.Repeat(" ", pad) + styled
+
+		return centered
 	}
 
-	return theme.BaseStyle.Render(m.table.View()) + "\n\n  " + m.HelpView() + "\n"
+	return theme.BaseStyle.Render(m.table.View()) + "\n" + m.HelpView() // ← exactly one row
 }
 
-func Select(rows []table.Row, what Selecting) config.SSHConfig {
-	var columns []table.Column
-	if what == SelectConfig {
-		columns = append(columns, []table.Column{
-			{Title: "Name"},
-			{Title: "Host"},
-			{Title: "Port"},
-			{Title: "User"},
-			{Title: "Key"},
-		}...)
+func (m model) HelpView() string {
+	var blocks []string
+	km := table.DefaultKeyMap()
+	if m.filtering {
+		blocks = append(blocks, "esc quit • ")
+	} else {
+
+		blocks = append(blocks,
+			fmt.Sprintf("%s %s", km.LineUp.Help().Key, km.LineUp.Help().Desc),
+			fmt.Sprintf("%s %s", km.LineDown.Help().Key, km.LineDown.Help().Desc),
+		)
+
+		if len(m.table.Columns()) == 6 {
+			blocks = append(blocks, "d delete", "r remove")
+		}
+
+		blocks = append(blocks,
+			"w window/full",
+			"/ filter",
+			"q quit",
+		)
 	}
 
-	if what == SelectHistory {
-		columns = append(columns, []table.Column{
-			{Title: "Name"},
-			{Title: "Host"},
-			{Title: "Port"},
-			{Title: "User"},
-			{Title: "Key"},
-			{Title: "Last login"},
-		}...)
-	}
+	// join with “ • ” and colour once
+	help := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#B2B2B2", Dark: "#4A4A4A"}).
+		Render(strings.Join(blocks, " • "))
 
+	if m.filtering {
+		prompt := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("57")).
+			Render("/" + m.filterText)
+		return " " + help + prompt
+	}
+	return " " + help
+}
+
+func (m *model) resetTableHeight() {
+	m.table.SetHeight(theme.GetTableHeight(
+		m.tableHeight,
+		len(m.filteredRows),
+	))
+	m.table.SetWidth(m.tableWidth)
+}
+
+func Select(rows []table.Row, what theme.TableStyle) config.SSHConfig {
 	t := table.New(
-		table.WithColumns(columns),
+		table.WithColumns(theme.GetColumns(what)),
 		table.WithRows(rows),
 		table.WithFocused(true),
-		table.WithHeight(int(math.Min(8, float64(len(rows)+1)))),
 	)
 
 	s := table.DefaultStyles()
-	s.Header = s.Header.BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("240")).BorderBottom(true).Bold(false)
-	s.Selected = s.Selected.Foreground(lipgloss.Color("229")).Background(lipgloss.Color("57")).Bold(false)
+	s.Header = theme.HeaderStyle
+	s.Selected = theme.SelectedStyle
 
 	t.SetStyles(s)
+	_m := model{
+		table:        t,
+		allRows:      rows,
+		filteredRows: rows,
+	}
 
-	p := tea.NewProgram(model{table: t, allRows: rows, filteredRows: rows, what: what})
+	var p *tea.Program
+	if settings.Get().Fullscreen {
+		p = tea.NewProgram(_m, tea.WithAltScreen())
+	} else {
+		p = tea.NewProgram(_m)
+	}
 	m, err := p.Run()
 	if err != nil {
 		fmt.Println("error while running the interactive selector, ", err)
@@ -386,67 +326,4 @@ func Select(rows []table.Row, what Selecting) config.SSHConfig {
 	}
 
 	return config.SSHConfig{}
-}
-func (m model) HelpView() string {
-
-	km := table.DefaultKeyMap()
-
-	var b strings.Builder
-
-	b.WriteString(generateHelpBlock(km.LineUp.Help().Key, km.LineUp.Help().Desc, true))
-	b.WriteString(generateHelpBlock(km.LineDown.Help().Key, km.LineDown.Help().Desc, true))
-
-	if m.what == SelectHistory {
-		b.WriteString(generateHelpBlock("d", "delete", true))
-		b.WriteString(generateHelpBlock("r", "remove", true))
-	}
-
-	b.WriteString(generateHelpBlock("w", "full/windowed", true))
-	b.WriteString(generateHelpBlock("/", "filter", true))
-	b.WriteString(generateHelpBlock("q/esc", "quit", false))
-
-	return b.String()
-}
-
-func (m model) HelpFilterView() string {
-
-	km := table.DefaultKeyMap()
-
-	var b strings.Builder
-
-	b.WriteString(generateHelpBlock(km.LineUp.Help().Key, km.LineUp.Help().Desc, true))
-	b.WriteString(generateHelpBlock(km.LineDown.Help().Key, km.LineDown.Help().Desc, true))
-	b.WriteString(generateHelpBlock("w", "full/windowed", true))
-	b.WriteString(generateHelpBlock("esc", "exit filter mode", false))
-
-	return b.String()
-}
-
-func generateHelpBlock(key, desc string, withSep bool) string {
-	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
-		Light: "#909090",
-		Dark:  "#626262",
-	})
-
-	descStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
-		Light: "#B2B2B2",
-		Dark:  "#4A4A4A",
-	})
-
-	sepStyle := lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{
-		Light: "#DDDADA",
-		Dark:  "#3C3C3C",
-	})
-
-	sep := sepStyle.Inline(true).Render(" • ")
-
-	str := keyStyle.Inline(true).Render(key) +
-		" " +
-		descStyle.Inline(true).Render(desc)
-
-	if withSep {
-		str += sep
-	}
-
-	return str
 }

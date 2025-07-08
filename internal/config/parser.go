@@ -168,6 +168,6 @@ func Print() {
 	for _, history := range list {
 		rows = append(rows, table.Row{history.Name, history.Host, history.Port, history.User, history.Key})
 	}
-	fmt.Println(theme.PrintTable(rows, theme.PrintConfig))
+	fmt.Println(theme.PrintTable(rows, theme.ConfigTable))
 
 }
