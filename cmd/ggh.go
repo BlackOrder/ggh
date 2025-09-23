@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/byawitz/ggh/internal/command"
 	"github.com/byawitz/ggh/internal/config"
 	"github.com/byawitz/ggh/internal/history"
@@ -13,6 +14,8 @@ func Main() {
 	command.CheckSSH()
 
 	args := os.Args[1:]
+
+	fmt.Println("\033[2mIn memory of Binymin Yawitz (1990–2025), creator of GGH \033[31m❤️\033[0m\033[2m\033[0m")
 
 	action, value := command.Which()
 	switch action {
