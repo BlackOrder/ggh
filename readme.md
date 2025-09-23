@@ -23,6 +23,12 @@ powershell -c "irm https://raw.githubusercontent.com/byawitz/ggh/master/install/
 go install github.com/byawitz/ggh@latest
 ```
 
+### Arch linux: 
+You can download these packages from the AUR
+https://aur.archlinux.org/packages/ssh-ggh
+https://aur.archlinux.org/packages/ssh-ggh-bin
+https://aur.archlinux.org/packages/ssh-ggh-git
+
 ## Usages
 
 ```shell
@@ -50,3 +56,6 @@ ggh --history
 In fact, GGH won't work if SSH is not installed or isn't available in your system's path.
 
 GGH is meant to act as a lightweight, fast wrapper around your SSH commands.
+
+# In memory
+You'll always be in our heart Binyamin (1990–2025), creator of GGH 

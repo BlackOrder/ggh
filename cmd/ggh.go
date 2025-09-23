@@ -15,7 +15,7 @@ func Main() {
 
 	args := os.Args[1:]
 
-	fmt.Println("\033[2mIn memory of Binymin Yawitz (1990–2025), creator of GGH \033[31m❤️\033[0m\033[2m\033[0m")
+	fmt.Println("\033[2mIn memory of Binyamin Yawitz (1990–2025), creator of GGH \033[31m❤️\033[0m\033[2m\033[0m")
 
 	action, value := command.Which()
 	switch action {
