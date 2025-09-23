@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	"path/filepath"
@@ -46,7 +47,10 @@ func ParseWithSearch(search string, configFile string) ([]SSHConfig, error) {
 				continue
 			}
 
-			line = strings.ReplaceAll(strings.TrimLeft(line, " "), "\t", "")
+			line = strings.ReplaceAll(strings.TrimLeft(line, " \t"), "\t", " ")
+			m1 := regexp.MustCompile(` ( *)`)
+			line = m1.ReplaceAllString(line, " ")
+
 			lineData := strings.Split(line, " ")
 			value := ""
 			if len(lineData) > 1 {
